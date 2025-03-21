@@ -82,6 +82,5 @@ function SettingsIcon() {
 const MODAL_OPTIONS = {
   presentation: 'modal',
   animation: 'fade_from_bottom', // for android
-  title: 'Settings',
-  headerRight: () => <ThemeToggle />,
+  title: 'Add new',
 } as const;

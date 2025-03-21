@@ -3,12 +3,12 @@ import { StyleSheet, View } from 'react-native';
 
 import { ScreenContent } from '~/components/ScreenContent';
 
-export default function Home() {
+export default function CalendarScreen() {
   return (
     <>
-      <Stack.Screen options={{ title: 'Analytics' }} />
+      <Stack.Screen options={{ title: 'Calendar' }} />
       <View style={styles.container}>
-        <ScreenContent path="app/(tabs)/two.tsx" title="Analytics" />
+        <ScreenContent path="app/(tabs)/calendar.tsx" title="Calendar" />
       </View>
     </>
   );
