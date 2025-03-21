@@ -2,14 +2,48 @@ import * as NavigationBar from 'expo-navigation-bar';
 import { useColorScheme as useNativewindColorScheme } from 'nativewind';
 import * as React from 'react';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { COLORS } from '~/theme/colors';
 
+const COLOR_SCHEME_STORAGE_KEY = '@Subs:colorScheme';
+
 function useColorScheme() {
-  const { colorScheme, setColorScheme: setNativeWindColorScheme } = useNativewindColorScheme();
+  const { colorScheme: nativewindColorScheme, setColorScheme: setNativeWindColorScheme } =
+    useNativewindColorScheme();
+  const [initialLoadComplete, setInitialLoadComplete] = React.useState(false);
+
+  // Load previously saved color scheme when component mounts
+  React.useEffect(() => {
+    const loadSavedColorScheme = async () => {
+      try {
+        const savedColorScheme = await AsyncStorage.getItem(COLOR_SCHEME_STORAGE_KEY);
+        if (savedColorScheme === 'dark' || savedColorScheme === 'light') {
+          setNativeWindColorScheme(savedColorScheme);
+          if (Platform.OS === 'android') {
+            await setNavigationBar(savedColorScheme);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load saved color scheme', error);
+      } finally {
+        setInitialLoadComplete(true);
+      }
+    };
+
+    loadSavedColorScheme();
+  }, []);
 
   async function setColorScheme(colorScheme: 'light' | 'dark') {
     setNativeWindColorScheme(colorScheme);
+
+    // Save the color scheme to AsyncStorage
+    try {
+      await AsyncStorage.setItem(COLOR_SCHEME_STORAGE_KEY, colorScheme);
+    } catch (error) {
+      console.error('Failed to save color scheme', error);
+    }
+
     if (Platform.OS !== 'android') return;
     try {
       await setNavigationBar(colorScheme);
@@ -19,15 +53,16 @@ function useColorScheme() {
   }
 
   function toggleColorScheme() {
-    return setColorScheme(colorScheme === 'light' ? 'dark' : 'light');
+    return setColorScheme(nativewindColorScheme === 'light' ? 'dark' : 'light');
   }
 
   return {
-    colorScheme: colorScheme ?? 'light',
-    isDarkColorScheme: colorScheme === 'dark',
+    colorScheme: nativewindColorScheme ?? 'light',
+    isDarkColorScheme: nativewindColorScheme === 'dark',
     setColorScheme,
     toggleColorScheme,
-    colors: COLORS[colorScheme ?? 'light'],
+    colors: COLORS[nativewindColorScheme ?? 'light'],
+    initialLoadComplete,
   };
 }
 

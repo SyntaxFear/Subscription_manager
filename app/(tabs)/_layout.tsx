@@ -10,7 +10,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: 'orange',
+        tabBarActiveTintColor: '#FF8000',
         tabBarInactiveTintColor: '#888',
         tabBarShowLabel: false,
         tabBarStyle: {
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'orange',
+    backgroundColor: '#FF8000',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     borderRightWidth: 0,
   },
   plusIconSelected: {
-    backgroundColor: 'orange',
+    backgroundColor: '#FF8000',
   },
   addButtonSelected: {
     backgroundColor: 'transparent',
