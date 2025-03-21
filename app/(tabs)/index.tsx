@@ -1,472 +1,469 @@
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import { useHeaderHeight } from '@react-navigation/elements';
-import { Icon } from '@roninoss/icons';
 import { FlashList } from '@shopify/flash-list';
-import { Stack } from 'expo-router';
-import * as StoreReview from 'expo-store-review';
-import { cssInterop } from 'nativewind';
+import { Stack, useRouter } from 'expo-router';
 import * as React from 'react';
 import {
-  Button as RNButton,
-  ButtonProps,
-  Linking,
-  Platform,
-  Share,
-  useWindowDimensions,
   View,
+  StyleSheet,
+  TouchableOpacity,
+  RefreshControl,
+  useWindowDimensions,
   Alert,
+  Platform,
+  ActionSheetIOS,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as LucideIcons from 'lucide-react-native';
 
 import { Container } from '~/components/Container';
-import { ActivityIndicator } from '~/components/nativewindui/ActivityIndicator';
-import { Avatar, AvatarFallback, AvatarImage } from '~/components/nativewindui/Avatar';
-import { DatePicker } from '~/components/nativewindui/DatePicker';
-import { Picker, PickerItem } from '~/components/nativewindui/Picker';
-import { ProgressIndicator } from '~/components/nativewindui/ProgressIndicator';
-import { Sheet, useSheetRef } from '~/components/nativewindui/Sheet';
-import { Slider } from '~/components/nativewindui/Slider';
 import { Text } from '~/components/nativewindui/Text';
-import { Toggle } from '~/components/nativewindui/Toggle';
 import { useColorScheme } from '~/lib/useColorScheme';
 import { useHeaderSearchBar } from '~/lib/useHeaderSearchBar';
 
-export default function Home() {
-  const searchValue = useHeaderSearchBar({ hideWhenScrolling: COMPONENTS.length === 0 });
+// Define subscription type
+interface Subscription {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  price: number;
+  currency: string;
+  startDate: string;
+  interval: string;
+  reminder: string;
+  createdAt: string;
+}
 
-  const data = searchValue
-    ? COMPONENTS.filter((c) => c.name.toLowerCase().includes(searchValue.toLowerCase()))
-    : COMPONENTS;
+// Orange brand color
+const ORANGE_COLOR = '#FF8000';
+
+// Currency symbols map
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  GEL: '₾',
+  EUR: '€',
+  GBP: '£',
+};
+
+// Interval map for display
+const INTERVAL_DISPLAY: Record<string, string> = {
+  '30': 'Monthly',
+  '7': 'Weekly',
+  '365': 'Yearly',
+  '90': 'Quarterly',
+  '14': 'Bi-weekly',
+  '60': 'Bi-monthly',
+  '1': 'Daily',
+};
+
+export default function Home() {
+  const { colors } = useColorScheme();
+  const [subscriptions, setSubscriptions] = React.useState<Subscription[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const router = useRouter();
+  const searchValue = useHeaderSearchBar({ hideWhenScrolling: subscriptions.length === 0 });
+
+  // Filter subscriptions based on search
+  const filteredData = searchValue
+    ? subscriptions.filter(
+        (sub) =>
+          sub.name.toLowerCase().includes(searchValue.toLowerCase()) ||
+          sub.description.toLowerCase().includes(searchValue.toLowerCase())
+      )
+    : subscriptions;
+
+  // Load subscriptions from AsyncStorage
+  const loadSubscriptions = React.useCallback(async () => {
+    try {
+      const data = await AsyncStorage.getItem('@Subs:subscriptions');
+      const parsedData = data ? JSON.parse(data) : [];
+      setSubscriptions(parsedData);
+    } catch (error) {
+      console.error('Error loading subscriptions:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  // Load subscriptions on mount
+  React.useEffect(() => {
+    loadSubscriptions();
+  }, [loadSubscriptions]);
+
+  // Handle refresh
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    loadSubscriptions();
+  }, [loadSubscriptions]);
+
+  // Navigate to add subscription
+  const handleAddSubscription = () => {
+    router.push('/modal');
+  };
+
+  // Delete subscription
+  const handleDeleteSubscription = async (id: string) => {
+    try {
+      // Get existing subscriptions
+      const data = await AsyncStorage.getItem('@Subs:subscriptions');
+      const existingData = data ? JSON.parse(data) : [];
+
+      // Filter out the subscription to delete
+      const updatedData = existingData.filter((sub: Subscription) => sub.id !== id);
+
+      // Save updated data
+      await AsyncStorage.setItem('@Subs:subscriptions', JSON.stringify(updatedData));
+
+      // Refresh subscriptions
+      loadSubscriptions();
+    } catch (error) {
+      console.error('Error deleting subscription:', error);
+    }
+  };
+
+  // Show delete confirmation
+  const confirmDelete = (id: string, name: string) => {
+    if (Platform.OS === 'web') {
+      if (confirm(`Are you sure you want to delete "${name}"?`)) {
+        handleDeleteSubscription(id);
+      }
+    } else {
+      Alert.alert('Delete Subscription', `Are you sure you want to delete "${name}"?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => handleDeleteSubscription(id) },
+      ]);
+    }
+  };
+
+  // Navigate to edit subscription
+  const handleEditSubscription = (subscription: Subscription) => {
+    // Store the subscription to edit
+    AsyncStorage.setItem('@Subs:editSubscription', JSON.stringify(subscription))
+      .then(() => {
+        router.push('/modal?edit=true');
+      })
+      .catch((error) => {
+        console.error('Error storing subscription to edit:', error);
+      });
+  };
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Tab One' }} />
+      <Stack.Screen options={{ title: 'Your Subscriptions' }} />
       <Container>
         <FlashList
           contentInsetAdjustmentBehavior="automatic"
           keyboardShouldPersistTaps="handled"
-          data={data}
-          estimatedItemSize={200}
-          contentContainerClassName="py-4 android:pb-12"
+          data={filteredData}
+          estimatedItemSize={100}
+          contentContainerClassName="py-8"
+          contentContainerStyle={{ paddingBottom: 100 }}
           extraData={searchValue}
-          removeClippedSubviews={false} // used for selecting text on android
-          keyExtractor={keyExtractor}
-          ItemSeparatorComponent={renderItemSeparator}
-          renderItem={renderItem}
-          ListEmptyComponent={COMPONENTS.length === 0 ? ListEmptyComponent : undefined}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <SubscriptionCard
+              subscription={item}
+              onEdit={() => handleEditSubscription(item)}
+              onDelete={() => confirmDelete(item.id, item.name)}
+            />
+          )}
+          ListEmptyComponent={!loading ? <EmptySubscriptions /> : null}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         />
       </Container>
     </>
   );
 }
 
-cssInterop(FlashList, {
-  className: 'style',
-  contentContainerClassName: 'contentContainerStyle',
-});
-
-function DefaultButton({ color, ...props }: ButtonProps) {
+// Subscription card component
+function SubscriptionCard({
+  subscription,
+  onEdit,
+  onDelete,
+}: {
+  subscription: Subscription;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
   const { colors } = useColorScheme();
-  return <RNButton color={color ?? colors.primary} {...props} />;
+  const startDate = new Date(subscription.startDate);
+  const nextBillingDate = new Date(startDate);
+  const today = new Date();
+
+  // Calculate next billing date
+  const intervalDays = parseInt(subscription.interval);
+  const daysSinceStart = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+  const daysElapsed = daysSinceStart % intervalDays;
+  const daysUntilNext = intervalDays - daysElapsed;
+
+  nextBillingDate.setDate(today.getDate() + daysUntilNext);
+
+  // Get currency symbol
+  const currencySymbol = CURRENCY_SYMBOLS[subscription.currency] || subscription.currency;
+
+  // Get interval display text
+  const intervalText =
+    INTERVAL_DISPLAY[subscription.interval] || `Every ${subscription.interval} days`;
+
+  // Get category color
+  const getCategoryColor = (category: string) => {
+    const colors: Record<string, string> = {
+      entertainment: '#FF4757', // Red
+      productivity: '#2ED573', // Green
+      tech: '#1E90FF', // Blue
+      utilities: '#FFA502', // Orange
+      shopping: '#7B68EE', // Purple
+      health: '#26de81', // Green
+      food: '#FF6B6B', // Pink
+      music: '#A3CB38', // Lime
+      education: '#5352ED', // Indigo
+      finance: '#2bcbba', // Teal
+      travel: '#FF9FF3', // Light Pink
+      social: '#1289A7', // Blue Green
+      news: '#D980FA', // Purple
+      other: '#B53471', // Dark Pink
+    };
+    return colors[category] || ORANGE_COLOR;
+  };
+
+  // Handle long press
+  const handleLongPress = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Edit', 'Delete', 'Cancel'],
+          destructiveButtonIndex: 1,
+          cancelButtonIndex: 2,
+          title: subscription.name,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 0) {
+            onEdit();
+          } else if (buttonIndex === 1) {
+            onDelete();
+          }
+        }
+      );
+    } else {
+      // For Android and other platforms
+      Alert.alert(subscription.name, 'What would you like to do?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Edit', onPress: onEdit },
+        { text: 'Delete', style: 'destructive', onPress: onDelete },
+      ]);
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onLongPress={handleLongPress}
+      style={styles.cardContainer}>
+      <View style={[styles.card, { backgroundColor: colors.card }]}>
+        {/* Category indicator */}
+        <View
+          style={[
+            styles.categoryIndicator,
+            { backgroundColor: getCategoryColor(subscription.category) },
+          ]}
+        />
+
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <View style={styles.titleAndCategory}>
+              <Text variant="title3" className="font-semibold">
+                {subscription.name}
+              </Text>
+              <View
+                style={[
+                  styles.categoryBadge,
+                  { backgroundColor: getCategoryColor(subscription.category) },
+                ]}>
+                <Text style={styles.categoryText} className="text-xs capitalize">
+                  {subscription.category}
+                </Text>
+              </View>
+            </View>
+            <Text variant="title3" className="font-semibold" style={{ color: ORANGE_COLOR }}>
+              {currencySymbol}
+              {subscription.price.toFixed(2)}
+            </Text>
+          </View>
+
+          {subscription.description ? (
+            <Text
+              variant="subhead"
+              color="tertiary"
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              className="mb-2">
+              {subscription.description}
+            </Text>
+          ) : null}
+
+          <View style={styles.cardMeta}>
+            <View style={styles.metaItemGroup}>
+              <View style={styles.metaItem}>
+                <LucideIcons.Calendar size={12} color={colors.grey2} />
+                <Text variant="caption2" color="tertiary" className="ml-1">
+                  {intervalText}
+                </Text>
+              </View>
+
+              <View style={styles.metaItem}>
+                <LucideIcons.Clock size={12} color={colors.grey2} />
+                <Text variant="caption2" color="tertiary" className="ml-1">
+                  {daysUntilNext} days left
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.nextDate}>
+              <Text variant="caption2" color="tertiary" className="text-right">
+                Next: {nextBillingDate.toLocaleDateString()}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 }
 
-function ListEmptyComponent() {
+// Empty state component
+function EmptySubscriptions() {
   const insets = useSafeAreaInsets();
   const dimensions = useWindowDimensions();
   const headerHeight = useHeaderHeight();
   const { colors } = useColorScheme();
+  const router = useRouter();
   const height = dimensions.height - headerHeight - insets.bottom - insets.top;
 
   return (
-    <View style={{ height }} className="flex-1 items-center justify-center gap-1 px-12">
-      <Icon name="file-plus-outline" size={42} color={colors.grey} />
+    <View style={{ height }} className="flex-1 items-center justify-center gap-2 px-12">
+      <View style={styles.emptyIconContainer}>
+        <LucideIcons.CreditCard size={32} color="#FFFFFF" />
+      </View>
       <Text variant="title3" className="pb-1 text-center font-semibold">
-        No Components Installed
+        No Subscriptions Yet
       </Text>
       <Text color="tertiary" variant="subhead" className="pb-4 text-center">
-        You can install any of the free components from the{' '}
-        <Text
-          onPress={() => Linking.openURL('https://nativewindui.com')}
-          variant="subhead"
-          className="text-primary">
-          NativeWindUI
-        </Text>
-        {' website.'}
+        Add your first subscription to start tracking your expenses.
       </Text>
+      <TouchableOpacity
+        style={[styles.addFirstButton, { backgroundColor: ORANGE_COLOR }]}
+        activeOpacity={0.7}
+        onPress={() => router.push('/modal')}>
+        <View style={styles.addFirstButtonContent}>
+          {/* <LucideIcons.Plus size={18} color="#FFFFFF" /> */}
+          <Text style={{ color: '#FFFFFF', marginLeft: 6 }} className="font-medium">
+            Add Subscription
+          </Text>
+        </View>
+      </TouchableOpacity>
     </View>
   );
 }
 
-type ComponentItem = { name: string; component: React.FC };
-
-function keyExtractor(item: ComponentItem) {
-  return item.name;
-}
-
-function renderItemSeparator() {
-  return <View className="p-2" />;
-}
-
-function renderItem({ item }: { item: ComponentItem }) {
-  return (
-    <Card title={item.name}>
-      <item.component />
-    </Card>
-  );
-}
-
-function Card({ children, title }: { children: React.ReactNode; title: string }) {
-  return (
-    <View className="px-4">
-      <View className="gap-4 rounded-xl border border-border bg-card p-4 pb-6 shadow-sm shadow-black/10 dark:shadow-none">
-        <Text className="text-center text-sm font-medium tracking-wider opacity-60">{title}</Text>
-        {children}
-      </View>
-    </View>
-  );
-}
-
-let hasRequestedReview = false;
-
-const COMPONENTS: ComponentItem[] = [
-  {
-    name: 'Picker',
-    component: function PickerExample() {
-      const { colors } = useColorScheme();
-      const [picker, setPicker] = React.useState('blue');
-      return (
-        <Picker selectedValue={picker} onValueChange={(itemValue) => setPicker(itemValue)}>
-          <PickerItem
-            label="Red"
-            value="red"
-            color={colors.foreground}
-            style={{
-              backgroundColor: colors.root,
-            }}
-          />
-          <PickerItem
-            label="Blue"
-            value="blue"
-            color={colors.foreground}
-            style={{
-              backgroundColor: colors.root,
-            }}
-          />
-          <PickerItem
-            label="Green"
-            value="green"
-            color={colors.foreground}
-            style={{
-              backgroundColor: colors.root,
-            }}
-          />
-        </Picker>
-      );
-    },
+const styles = StyleSheet.create({
+  cardContainer: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
-
-  {
-    name: 'Date Picker',
-    component: function DatePickerExample() {
-      const [date, setDate] = React.useState(new Date());
-      return (
-        <View className="items-center">
-          <DatePicker
-            value={date}
-            mode="datetime"
-            onChange={(ev) => {
-              setDate(new Date(ev.nativeEvent.timestamp));
-            }}
-          />
-        </View>
-      );
-    },
+  card: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    position: 'relative',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingLeft: 18,
   },
-
-  {
-    name: 'Slider',
-    component: function SliderExample() {
-      const [sliderValue, setSliderValue] = React.useState(0.5);
-      return <Slider value={sliderValue} onValueChange={setSliderValue} />;
-    },
+  categoryIndicator: {
+    width: 3,
+    height: '200%',
+    position: 'absolute',
+    left: 0,
+    top: 0,
   },
-
-  {
-    name: 'Toggle',
-    component: function ToggleExample() {
-      const [switchValue, setSwitchValue] = React.useState(true);
-      return (
-        <View className="items-center">
-          <Toggle value={switchValue} onValueChange={setSwitchValue} />
-        </View>
-      );
-    },
+  cardContent: {
+    flex: 1,
+    paddingLeft: 4,
   },
-
-  {
-    name: 'Progress Indicator',
-    component: function ProgressIndicatorExample() {
-      const [progress, setProgress] = React.useState(13);
-      let id: ReturnType<typeof setInterval> | null = null;
-      React.useEffect(() => {
-        if (!id) {
-          id = setInterval(() => {
-            setProgress((prev) => (prev >= 99 ? 0 : prev + 5));
-          }, 1000);
-        }
-        return () => {
-          if (id) clearInterval(id);
-        };
-      }, []);
-      return (
-        <View className="p-4">
-          <ProgressIndicator value={progress} />
-        </View>
-      );
-    },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
   },
-
-  {
-    name: 'Activity Indicator',
-    component: function ActivityIndicatorExample() {
-      return (
-        <View className="items-center p-4">
-          <ActivityIndicator />
-        </View>
-      );
-    },
+  cardMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
   },
-
-  {
-    name: 'Action Sheet',
-    component: function ActionSheetExample() {
-      const { colorScheme, colors } = useColorScheme();
-      const { showActionSheetWithOptions } = useActionSheet();
-      return (
-        <View className="items-center">
-          <DefaultButton
-            color="grey"
-            onPress={async () => {
-              const options = ['Delete', 'Save', 'Cancel'];
-              const destructiveButtonIndex = 0;
-              const cancelButtonIndex = 2;
-
-              showActionSheetWithOptions(
-                {
-                  options,
-                  cancelButtonIndex,
-                  destructiveButtonIndex,
-                  containerStyle: {
-                    backgroundColor: colorScheme === 'dark' ? 'black' : 'white',
-                  },
-                  textStyle: {
-                    color: colors.foreground,
-                  },
-                },
-                (selectedIndex) => {
-                  switch (selectedIndex) {
-                    case 1:
-                      // Save
-                      break;
-
-                    case destructiveButtonIndex:
-                      // Delete
-                      break;
-
-                    case cancelButtonIndex:
-                    // Canceled
-                  }
-                }
-              );
-            }}
-            title="Open action sheet"
-          />
-        </View>
-      );
-    },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-
-  {
-    name: 'Text',
-    component: function TextExample() {
-      return (
-        <View className="gap-2">
-          <Text variant="largeTitle" className="text-center">
-            Large Title
-          </Text>
-          <Text variant="title1" className="text-center">
-            Title 1
-          </Text>
-          <Text variant="title2" className="text-center">
-            Title 2
-          </Text>
-          <Text variant="title3" className="text-center">
-            Title 3
-          </Text>
-          <Text variant="heading" className="text-center">
-            Heading
-          </Text>
-          <Text variant="body" className="text-center">
-            Body
-          </Text>
-          <Text variant="callout" className="text-center">
-            Callout
-          </Text>
-          <Text variant="subhead" className="text-center">
-            Subhead
-          </Text>
-          <Text variant="footnote" className="text-center">
-            Footnote
-          </Text>
-          <Text variant="caption1" className="text-center">
-            Caption 1
-          </Text>
-          <Text variant="caption2" className="text-center">
-            Caption 2
-          </Text>
-        </View>
-      );
-    },
+  titleAndCategory: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+    maxWidth: '70%',
   },
-  {
-    name: 'Selectable Text',
-    component: function SelectableTextExample() {
-      return (
-        <Text uiTextView selectable>
-          Long press or double press this text
-        </Text>
-      );
-    },
+  categoryBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
   },
-
-  {
-    name: 'Ratings Indicator',
-    component: function RatingsIndicatorExample() {
-      React.useEffect(() => {
-        async function showRequestReview() {
-          if (hasRequestedReview) return;
-          try {
-            if (await StoreReview.hasAction()) {
-              await StoreReview.requestReview();
-            }
-          } catch (error) {
-            console.log(
-              'FOR ANDROID: Make sure you meet all conditions to be able to test and use it: https://developer.android.com/guide/playcore/in-app-review/test#troubleshooting',
-              error
-            );
-          } finally {
-            hasRequestedReview = true;
-          }
-        }
-        const timeout = setTimeout(() => {
-          showRequestReview();
-        }, 1000);
-
-        return () => clearTimeout(timeout);
-      }, []);
-
-      return (
-        <View className="gap-3">
-          <Text className="pb-2 text-center font-semibold">Please follow the guidelines.</Text>
-          <View className="flex-row">
-            <Text className="w-6 text-center text-muted-foreground">·</Text>
-            <View className="flex-1">
-              <Text variant="caption1" className="text-muted-foreground">
-                Don't call StoreReview.requestReview() from a button
-              </Text>
-            </View>
-          </View>
-          <View className="flex-row">
-            <Text className="w-6 text-center text-muted-foreground">·</Text>
-            <View className="flex-1">
-              <Text variant="caption1" className="text-muted-foreground">
-                Don't request a review when the user is doing something time sensitive.
-              </Text>
-            </View>
-          </View>
-          <View className="flex-row">
-            <Text className="w-6 text-center text-muted-foreground">·</Text>
-            <View className="flex-1">
-              <Text variant="caption1" className="text-muted-foreground">
-                Don't ask the user any questions before or while presenting the rating button or
-                card.
-              </Text>
-            </View>
-          </View>
-        </View>
-      );
-    },
+  categoryText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '500',
   },
-
-  {
-    name: 'Activity View',
-    component: function ActivityViewExample() {
-      return (
-        <View className="items-center">
-          <DefaultButton
-            onPress={async () => {
-              try {
-                const result = await Share.share({
-                  message: 'NativeWindUI | Familiar interface, native feel.',
-                });
-                if (result.action === Share.sharedAction) {
-                  if (result.activityType) {
-                    // shared with activity type of result.activityType
-                  } else {
-                    // shared
-                  }
-                } else if (result.action === Share.dismissedAction) {
-                  // dismissed
-                }
-              } catch (error: any) {
-                Alert.alert(error.message);
-              }
-            }}
-            title="Share a message"
-          />
-        </View>
-      );
-    },
+  metaItemGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-
-  {
-    name: 'Bottom Sheet',
-    component: function BottomSheetExample() {
-      const { colorScheme } = useColorScheme();
-      const bottomSheetModalRef = useSheetRef();
-
-      return (
-        <View className="items-center">
-          <DefaultButton
-            color={colorScheme === 'dark' && Platform.OS === 'ios' ? 'white' : 'black'}
-            title="Open Bottom Sheet"
-            onPress={() => bottomSheetModalRef.current?.present()}
-          />
-          <Sheet ref={bottomSheetModalRef} snapPoints={[200]}>
-            <View className="flex-1 items-center justify-center pb-8">
-              <Text>@gorhom/bottom-sheet 🎉</Text>
-            </View>
-          </Sheet>
-        </View>
-      );
-    },
+  nextDate: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
-
-  {
-    name: 'Avatar',
-    component: function AvatarExample() {
-      const TWITTER_AVATAR_URI =
-        'https://pbs.twimg.com/profile_images/1782428433898708992/1voyv4_A_400x400.jpg';
-      return (
-        <View className="items-center">
-          <Avatar alt="NativeWindUI Avatar">
-            <AvatarImage source={{ uri: TWITTER_AVATAR_URI }} />
-            <AvatarFallback>
-              <Text>NUI</Text>
-            </AvatarFallback>
-          </Avatar>
-        </View>
-      );
-    },
+  addFirstButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
   },
-];
+  emptyIconContainer: {
+    backgroundColor: ORANGE_COLOR,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: ORANGE_COLOR,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  addFirstButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+});

@@ -41,15 +41,15 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          headerTitle: 'Home',
+          title: 'Dashboard',
+          headerTitle: 'Dashboard',
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="Home" color={focused ? color : '#888'} />
           ),
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="analytics"
         options={{
           title: 'Analytics',
           headerTitle: 'Analytics',

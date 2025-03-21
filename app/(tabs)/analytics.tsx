@@ -8,7 +8,7 @@ export default function Home() {
     <>
       <Stack.Screen options={{ title: 'Analytics' }} />
       <View style={styles.container}>
-        <ScreenContent path="app/(tabs)/two.tsx" title="Analytics" />
+        <ScreenContent path="app/(tabs)/analytics.tsx" title="Analytics" />
       </View>
     </>
   );
