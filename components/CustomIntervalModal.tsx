@@ -184,12 +184,16 @@ export function CustomIntervalModal({ visible, onClose, onSave }: CustomInterval
 
           <View style={styles.buttonContainer}>
             <TouchableOpacity
+              activeOpacity={0.7}
               style={[styles.button, styles.cancelButton]}
               onPress={() => onClose()}>
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={handleSave}>
+            <TouchableOpacity
+              style={[styles.button, styles.saveButton]}
+              activeOpacity={0.7}
+              onPress={handleSave}>
               <Text style={styles.saveText}>Save</Text>
             </TouchableOpacity>
           </View>

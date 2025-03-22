@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import * as React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, Stack } from 'expo-router';
 import ContextMenu from 'react-native-context-menu-view';
 
 import { Text } from '~/components/nativewindui/Text';
@@ -211,8 +211,11 @@ export default function Modal() {
         await AsyncStorage.removeItem('@Subs:editSubscription');
       }
 
-      // Close the modal
-      router.back();
+      // Set a flag to refresh home screen
+      await AsyncStorage.setItem('@Subs:refreshHome', 'true');
+
+      // Navigate to home page
+      router.replace('/(tabs)');
     } catch (error) {
       console.error('Error saving subscription:', error);
       // You might want to show an error message to the user here
@@ -408,16 +411,13 @@ export default function Modal() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <Stack.Screen options={{ title: isEditing ? 'Edit Subscription' : 'Add New Subscription' }} />
       <ScrollView
         style={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic">
         <View style={{ paddingBottom: 100 }}>
           <View style={{ marginBottom: 16 }}>
-            <Text variant="title3" className="mb-2">
-              {isEditing ? 'Edit Subscription' : 'New Subscription'}
-            </Text>
-
             <View style={styles.formContainer}>
               {/* Subscription Name */}
               <View style={styles.formGroup}>

@@ -1,7 +1,7 @@
 import { useActionSheet } from '@expo/react-native-action-sheet';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { FlashList } from '@shopify/flash-list';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useFocusEffect } from 'expo-router';
 import * as React from 'react';
 import {
   View,
@@ -89,10 +89,32 @@ export default function Home() {
     }
   }, []);
 
+  // Check for refresh flag
+  const checkRefreshFlag = React.useCallback(async () => {
+    try {
+      const refreshFlag = await AsyncStorage.getItem('@Subs:refreshHome');
+      if (refreshFlag === 'true') {
+        // Clear the flag
+        await AsyncStorage.removeItem('@Subs:refreshHome');
+        // Refresh the subscriptions
+        loadSubscriptions();
+      }
+    } catch (error) {
+      console.error('Error checking refresh flag:', error);
+    }
+  }, [loadSubscriptions]);
+
   // Load subscriptions on mount
   React.useEffect(() => {
     loadSubscriptions();
   }, [loadSubscriptions]);
+
+  // Set up focus effect to refresh the list when returning to this screen
+  useFocusEffect(
+    React.useCallback(() => {
+      checkRefreshFlag();
+    }, [checkRefreshFlag])
+  );
 
   // Handle refresh
   const onRefresh = React.useCallback(() => {
@@ -172,7 +194,14 @@ export default function Home() {
             />
           )}
           ListEmptyComponent={!loading ? <EmptySubscriptions /> : null}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={ORANGE_COLOR}
+              colors={[ORANGE_COLOR]}
+            />
+          }
         />
       </Container>
     </>
@@ -260,7 +289,7 @@ function SubscriptionCard({
 
   return (
     <TouchableOpacity
-      activeOpacity={0.9}
+      activeOpacity={0.7}
       onLongPress={handleLongPress}
       style={styles.cardContainer}>
       <View style={[styles.card, { backgroundColor: colors.card }]}>

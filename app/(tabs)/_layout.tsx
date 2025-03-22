@@ -1,8 +1,14 @@
 import { BlurView } from 'expo-blur';
 import { Link, Tabs, useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { View, StyleSheet, Platform, Pressable } from 'react-native';
 
 import { TabBarIcon } from '../../components/TabBarIcon';
+
+// Helper function for tab press with haptic feedback
+const handleTabPress = () => {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+};
 
 export default function TabLayout() {
   const router = useRouter();
@@ -37,6 +43,16 @@ export default function TabLayout() {
               style={[StyleSheet.absoluteFill, styles.blurView]}
             />
           ) : null,
+        // Add haptic feedback on tab press
+        tabBarButton: (props) => (
+          <Pressable
+            {...props}
+            onPress={(e) => {
+              handleTabPress();
+              props.onPress?.(e);
+            }}
+          />
+        ),
       }}>
       <Tabs.Screen
         name="index"
@@ -68,7 +84,11 @@ export default function TabLayout() {
           tabBarIcon: () => null,
           tabBarButton: () => (
             <Link href="/modal" asChild>
-              <Pressable style={styles.addButtonWrapper}>
+              <Pressable
+                style={styles.addButtonWrapper}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                }}>
                 <View style={styles.addButtonContainer}>
                   <View style={styles.plusIconContainer}>
                     <TabBarIcon name="Plus" color="white" size={24} />
