@@ -1,5 +1,13 @@
 import { Stack } from 'expo-router';
-import { StyleSheet, View, ScrollView, Linking, Pressable, TextInput } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  Linking,
+  Pressable,
+  TextInput,
+  Platform,
+} from 'react-native';
 import * as React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
@@ -10,6 +18,8 @@ import { Text } from '~/components/nativewindui/Text';
 import { Toggle } from '~/components/nativewindui/Toggle';
 import { useColorScheme } from '~/lib/useColorScheme';
 import { Sheet, useSheetRef } from '~/components/nativewindui/Sheet';
+import { DatePicker } from '~/components/nativewindui/DatePicker';
+import { Picker, PickerItem } from '~/components/nativewindui/Picker';
 
 // Theme colors
 const ORANGE_COLOR = '#FF8000';
@@ -22,6 +32,7 @@ const CUSTOM_INTERVAL_DISPLAY_KEY = '@Subs:customIntervalDisplay';
 const REMINDER_DAYS_KEY = '@Subs:reminderDays';
 const CUSTOM_REMINDER_DAYS_KEY = '@Subs:customReminderDays';
 const CUSTOM_INTERVAL_DAYS_KEY = '@Subs:customIntervalDays';
+const NOTIFICATION_TIME_KEY = '@Subs:notificationTime';
 
 // Subscription interval options
 export const SUBSCRIPTION_INTERVALS = [
@@ -49,6 +60,17 @@ export const REMINDER_DAYS_OPTIONS = [
   { label: '7 Days', value: '7' },
 ];
 
+// Time options for notifications (24-hour format)
+export const NOTIFICATION_HOURS = Array.from({ length: 24 }, (_, i) => {
+  const hour = i;
+  const period = hour < 12 ? 'AM' : 'PM';
+  const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  return {
+    label: `${displayHour}:00 ${period}`,
+    value: hour.toString().padStart(2, '0') + ':00',
+  };
+});
+
 export default function SettingsScreen() {
   const { colorScheme, toggleColorScheme, colors } = useColorScheme();
   const [interval, setInterval] = React.useState('monthly');
@@ -57,6 +79,9 @@ export default function SettingsScreen() {
   const [customIntervalDays, setCustomIntervalDays] = React.useState('');
   const [reminderDays, setReminderDays] = React.useState('3');
   const [customReminderDays, setCustomReminderDays] = React.useState('');
+  const [notificationTime, setNotificationTime] = React.useState('09:00'); // Default to 9:00 AM
+  const [timePickerDate, setTimePickerDate] = React.useState(new Date());
+  const [showAndroidTimePicker, setShowAndroidTimePicker] = React.useState(false);
   const appVersion = Constants.expoConfig?.version || '1.0.0';
 
   const intervalSheetRef = useSheetRef();
@@ -64,6 +89,7 @@ export default function SettingsScreen() {
   const reminderDaysSheetRef = useSheetRef();
   const customReminderDaysSheetRef = useSheetRef();
   const customIntervalDaysSheetRef = useSheetRef();
+  const notificationTimeSheetRef = useSheetRef();
 
   // Use orange as the primary color instead of the default blue
   const themeColors = React.useMemo(
@@ -215,6 +241,23 @@ export default function SettingsScreen() {
 
         const savedCustomReminderDays = await AsyncStorage.getItem(CUSTOM_REMINDER_DAYS_KEY);
         if (savedCustomReminderDays) setCustomReminderDays(savedCustomReminderDays);
+
+        const savedNotificationTime = await AsyncStorage.getItem(NOTIFICATION_TIME_KEY);
+        if (savedNotificationTime) {
+          setNotificationTime(savedNotificationTime);
+          // Set the time picker date to match the saved time
+          const date = new Date();
+          if (savedNotificationTime.includes(':')) {
+            const [hours, minutes] = savedNotificationTime.split(':');
+            date.setHours(parseInt(hours, 10));
+            date.setMinutes(parseInt(minutes, 10));
+          } else {
+            // Handle legacy format (hour only)
+            date.setHours(parseInt(savedNotificationTime, 10));
+            date.setMinutes(0);
+          }
+          setTimePickerDate(date);
+        }
       } catch (error) {
         console.error('Failed to load settings', error);
       }
@@ -415,6 +458,63 @@ export default function SettingsScreen() {
     }
   };
 
+  // Save notification time
+  const handleNotificationTimeChange = async (value: string) => {
+    setNotificationTime(value);
+    notificationTimeSheetRef.current?.dismiss();
+
+    try {
+      await AsyncStorage.setItem(NOTIFICATION_TIME_KEY, value);
+    } catch (error) {
+      console.error('Failed to save notification time', error);
+    }
+  };
+
+  // Handle time change from DatePicker
+  const handleTimeChange = (event: any, selectedDate?: Date) => {
+    setShowAndroidTimePicker(false);
+
+    if (selectedDate) {
+      setTimePickerDate(selectedDate);
+      const hour = selectedDate.getHours().toString().padStart(2, '0');
+      const minute = selectedDate.getMinutes().toString().padStart(2, '0');
+      const timeString = `${hour}:${minute}`;
+      setNotificationTime(timeString);
+
+      if (Platform.OS === 'android') {
+        // On Android, we need to save the time when the user selects it
+        AsyncStorage.setItem(NOTIFICATION_TIME_KEY, timeString).catch((error) => {
+          console.error('Failed to save notification time', error);
+        });
+      }
+    }
+  };
+
+  // For iOS, save time when sheet is dismissed
+  const handleTimePickerDismiss = () => {
+    if (Platform.OS === 'ios') {
+      AsyncStorage.setItem(NOTIFICATION_TIME_KEY, notificationTime).catch((error) => {
+        console.error('Failed to save notification time', error);
+      });
+    }
+  };
+
+  // Format the time for display
+  const formatTimeForDisplay = (timeString: string) => {
+    if (!timeString.includes(':')) {
+      return (
+        NOTIFICATION_HOURS.find((t) => t.value.split(':')[0] === timeString)?.label ||
+        `${timeString}:00`
+      );
+    }
+
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours, 10);
+    const period = hour < 12 ? 'AM' : 'PM';
+    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+    return `${displayHour}:${minutes} ${period}`;
+  };
+
   return (
     <>
       <Stack.Screen
@@ -476,6 +576,44 @@ export default function SettingsScreen() {
               <Icon name="chevron-right" color={themeColors.primary} size={20} />
             </View>
           </Pressable>
+
+          <Pressable
+            style={styles.settingRow}
+            onPress={() => {
+              if (Platform.OS === 'ios') {
+                notificationTimeSheetRef.current?.present();
+              } else {
+                // On Android, show the time picker directly
+                const currentDate = new Date();
+                if (notificationTime.includes(':')) {
+                  const [hours, minutes] = notificationTime.split(':');
+                  currentDate.setHours(parseInt(hours, 10));
+                  currentDate.setMinutes(parseInt(minutes, 10));
+                } else {
+                  // Handle legacy format
+                  currentDate.setHours(parseInt(notificationTime, 10));
+                  currentDate.setMinutes(0);
+                }
+                setTimePickerDate(currentDate);
+                setShowAndroidTimePicker(true);
+              }
+            }}>
+            <Text style={styles.label}>Notification Time</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={styles.value}>{formatTimeForDisplay(notificationTime)}</Text>
+              <Icon name="chevron-right" color={themeColors.primary} size={20} />
+            </View>
+          </Pressable>
+
+          {/* Show Android native time picker when needed */}
+          {showAndroidTimePicker && Platform.OS === 'android' && (
+            <DatePicker
+              value={timePickerDate}
+              mode="time"
+              display="default"
+              onChange={handleTimeChange}
+            />
+          )}
         </View>
 
         {/* Footer */}
@@ -554,6 +692,47 @@ export default function SettingsScreen() {
                 </Pressable>
               ))}
             </View>
+          </BottomSheetView>
+        </Sheet>
+
+        {/* Notification Time Selection Sheet (for iOS) */}
+        <Sheet
+          ref={notificationTimeSheetRef}
+          snapPoints={['40%']}
+          customHandleColor={themeColors.primary}
+          onDismiss={handleTimePickerDismiss}>
+          <BottomSheetView
+            style={{ flex: 1, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16 }}>
+            <Text
+              style={[
+                styles.sheetOptionText,
+                { fontWeight: '600', marginBottom: 8, fontSize: 18 },
+              ]}>
+              Select Notification Time
+            </Text>
+
+            {Platform.OS === 'ios' && (
+              <DatePicker
+                value={timePickerDate}
+                mode="time"
+                display="spinner"
+                onChange={handleTimeChange}
+                themeVariant={colorScheme}
+                style={{ flex: 1, marginTop: -8 }}
+              />
+            )}
+
+            {Platform.OS === 'android' && (
+              <View style={{ flex: 1 }}>
+                <Picker
+                  selectedValue={notificationTime}
+                  onValueChange={(itemValue) => handleNotificationTimeChange(itemValue.toString())}>
+                  {NOTIFICATION_HOURS.map((item) => (
+                    <PickerItem key={item.value} label={item.label} value={item.value} />
+                  ))}
+                </Picker>
+              </View>
+            )}
           </BottomSheetView>
         </Sheet>
       </ScrollView>
