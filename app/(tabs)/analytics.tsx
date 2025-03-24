@@ -44,10 +44,36 @@ export default function AnalyticsScreen() {
 
     subscriptions.forEach((sub) => {
       const intervalDays = parseInt(sub.interval);
-      const monthlyFactor = 30 / intervalDays;
-      const cost = sub.price * monthlyFactor;
+      let monthlyCost = 0;
 
-      costsByCurrency[sub.currency] = (costsByCurrency[sub.currency] || 0) + cost;
+      // Calculate monthly cost based on interval
+      if (intervalDays === 30) {
+        // Monthly subscription
+        monthlyCost = sub.price;
+      } else if (intervalDays === 7) {
+        // Weekly subscription
+        monthlyCost = sub.price * 4;
+      } else if (intervalDays === 365) {
+        // Yearly subscription
+        monthlyCost = sub.price / 12;
+      } else if (intervalDays === 90) {
+        // Quarterly subscription
+        monthlyCost = sub.price / 3;
+      } else if (intervalDays === 14) {
+        // Bi-weekly subscription
+        monthlyCost = sub.price * 2;
+      } else if (intervalDays === 60) {
+        // Bi-monthly subscription
+        monthlyCost = sub.price / 2;
+      } else if (intervalDays === 1) {
+        // Daily subscription
+        monthlyCost = sub.price * 30;
+      } else {
+        // Custom interval - calculate based on days
+        monthlyCost = (sub.price * 30) / intervalDays;
+      }
+
+      costsByCurrency[sub.currency] = (costsByCurrency[sub.currency] || 0) + monthlyCost;
     });
 
     return costsByCurrency;
@@ -60,10 +86,36 @@ export default function AnalyticsScreen() {
 
     subscriptions.forEach((sub) => {
       const intervalDays = parseInt(sub.interval);
-      const quarterlyFactor = 90 / intervalDays;
-      const cost = sub.price * quarterlyFactor;
+      let quarterlyCost = 0;
 
-      costsByCurrency[sub.currency] = (costsByCurrency[sub.currency] || 0) + cost;
+      // Calculate quarterly cost based on interval
+      if (intervalDays === 30) {
+        // Monthly subscription
+        quarterlyCost = sub.price * 3;
+      } else if (intervalDays === 7) {
+        // Weekly subscription
+        quarterlyCost = sub.price * 13;
+      } else if (intervalDays === 365) {
+        // Yearly subscription
+        quarterlyCost = sub.price / 4;
+      } else if (intervalDays === 90) {
+        // Quarterly subscription
+        quarterlyCost = sub.price;
+      } else if (intervalDays === 14) {
+        // Bi-weekly subscription
+        quarterlyCost = sub.price * 6;
+      } else if (intervalDays === 60) {
+        // Bi-monthly subscription
+        quarterlyCost = sub.price * 1.5;
+      } else if (intervalDays === 1) {
+        // Daily subscription
+        quarterlyCost = sub.price * 90;
+      } else {
+        // Custom interval - calculate based on days
+        quarterlyCost = (sub.price * 90) / intervalDays;
+      }
+
+      costsByCurrency[sub.currency] = (costsByCurrency[sub.currency] || 0) + quarterlyCost;
     });
 
     return costsByCurrency;
@@ -76,10 +128,36 @@ export default function AnalyticsScreen() {
 
     subscriptions.forEach((sub) => {
       const intervalDays = parseInt(sub.interval);
-      const yearlyFactor = 365 / intervalDays;
-      const cost = sub.price * yearlyFactor;
+      let yearlyCost = 0;
 
-      costsByCurrency[sub.currency] = (costsByCurrency[sub.currency] || 0) + cost;
+      // Calculate yearly cost based on interval
+      if (intervalDays === 30) {
+        // Monthly subscription
+        yearlyCost = sub.price * 12;
+      } else if (intervalDays === 7) {
+        // Weekly subscription
+        yearlyCost = sub.price * 52;
+      } else if (intervalDays === 365) {
+        // Yearly subscription
+        yearlyCost = sub.price;
+      } else if (intervalDays === 90) {
+        // Quarterly subscription
+        yearlyCost = sub.price * 4;
+      } else if (intervalDays === 14) {
+        // Bi-weekly subscription
+        yearlyCost = sub.price * 26;
+      } else if (intervalDays === 60) {
+        // Bi-monthly subscription
+        yearlyCost = sub.price * 6;
+      } else if (intervalDays === 1) {
+        // Daily subscription
+        yearlyCost = sub.price * 365;
+      } else {
+        // Custom interval - calculate based on days
+        yearlyCost = (sub.price * 365) / intervalDays;
+      }
+
+      costsByCurrency[sub.currency] = (costsByCurrency[sub.currency] || 0) + yearlyCost;
     });
 
     return costsByCurrency;
@@ -207,55 +285,76 @@ export default function AnalyticsScreen() {
       // Initialize projection data structure for this currency
       const projectionData = Array(6).fill(0);
 
-      // Initialize with monthly cost
-      const monthlyCosts = getTotalMonthlyCost();
-      if (monthlyCosts[currency]) {
-        for (let i = 0; i < 6; i++) {
-          projectionData[i] = monthlyCosts[currency];
-        }
-      }
-
-      // Add upcoming subscription renewals
+      // First add regular monthly costs
       subs.forEach((sub) => {
-        const startDate = new Date(sub.startDate);
         const intervalDays = parseInt(sub.interval);
 
-        // Skip daily/weekly subscriptions for projection
-        if (intervalDays < 28) return;
+        // Skip quarterly subscriptions as we'll handle them separately
+        if (intervalDays === 90) return;
 
-        // Calculate the next few renewal dates
+        // Calculate monthly equivalent cost for non-quarterly subscriptions
+        let monthlyCost = 0;
+        if (intervalDays === 30) {
+          monthlyCost = sub.price;
+        } else if (intervalDays === 7) {
+          monthlyCost = sub.price * 4;
+        } else if (intervalDays === 365) {
+          monthlyCost = sub.price / 12;
+        } else if (intervalDays === 14) {
+          monthlyCost = sub.price * 2;
+        } else if (intervalDays === 60) {
+          monthlyCost = sub.price / 2;
+        } else if (intervalDays === 1) {
+          monthlyCost = sub.price * 30;
+        } else {
+          monthlyCost = (sub.price * 30) / intervalDays;
+        }
+
+        // Add monthly cost to all months
         for (let i = 0; i < 6; i++) {
-          const targetMonth = (currentMonth + i) % 12;
-          const targetYear = new Date().getFullYear() + Math.floor((currentMonth + i) / 12);
+          projectionData[i] += monthlyCost;
+        }
+      });
 
-          // Check if subscription renews in this month
-          const daysSinceStart = Math.floor(
-            (new Date(targetYear, targetMonth, 15).getTime() - startDate.getTime()) /
-              (1000 * 3600 * 24)
-          );
+      // Now handle quarterly subscriptions
+      subs.forEach((sub) => {
+        const intervalDays = parseInt(sub.interval);
+        if (intervalDays !== 90) return;
 
-          if (daysSinceStart % intervalDays < 30 && intervalDays >= 28) {
-            // This is an approximate but good enough calculation for visualization
+        const startDate = new Date(sub.startDate);
+        const today = new Date();
+        const daysSinceStart = Math.floor(
+          (today.getTime() - startDate.getTime()) / (1000 * 3600 * 24)
+        );
+        const daysUntilNextPayment = 90 - (daysSinceStart % 90);
+
+        // Calculate next payment date
+        let nextPaymentDate = new Date();
+        nextPaymentDate.setDate(nextPaymentDate.getDate() + daysUntilNextPayment);
+
+        // Add quarterly payments to projection
+        for (let i = 0; i < 6; i++) {
+          const monthDate = new Date();
+          monthDate.setMonth(currentMonth + i);
+
+          if (
+            monthDate.getMonth() === nextPaymentDate.getMonth() &&
+            monthDate.getFullYear() === nextPaymentDate.getFullYear()
+          ) {
+            projectionData[i] += sub.price;
+          }
+
+          // Check if there's another payment 3 months later within our 6-month window
+          const threeMonthsLater = new Date(nextPaymentDate);
+          threeMonthsLater.setMonth(nextPaymentDate.getMonth() + 3);
+          if (
+            monthDate.getMonth() === threeMonthsLater.getMonth() &&
+            monthDate.getFullYear() === threeMonthsLater.getFullYear()
+          ) {
             projectionData[i] += sub.price;
           }
         }
       });
-
-      // Ensure non-empty projections (fixes issue with some currencies)
-      // If all values are 0, put in the monthly cost for that currency
-      if (projectionData.every((value) => value === 0) && monthlyCosts[currency]) {
-        for (let i = 0; i < 6; i++) {
-          projectionData[i] = monthlyCosts[currency];
-        }
-      }
-
-      // Ensure we have at least some small value to display
-      // If all values are still 0, put in a small value to ensure chart appears
-      if (projectionData.every((value) => value === 0)) {
-        for (let i = 0; i < 6; i++) {
-          projectionData[i] = 1; // Minimum value to display chart
-        }
-      }
 
       projectionByCurrency[currency] = {
         labels: months

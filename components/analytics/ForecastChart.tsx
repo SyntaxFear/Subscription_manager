@@ -45,7 +45,7 @@ export const ForecastChart = ({ currency, projectionData, colors }: ForecastChar
       <View className="pt-2.5">
         <LineChart
           data={projectionData}
-          width={windowWidth - 64}
+          width={windowWidth}
           height={180}
           chartConfig={{
             backgroundColor: 'transparent',
@@ -54,7 +54,7 @@ export const ForecastChart = ({ currency, projectionData, colors }: ForecastChar
             decimalPlaces: 0,
             color: (opacity = 1) => `rgba(255, 128, 0, ${opacity})`,
             labelColor: (opacity = 1) => colors.grey2 || '#999999',
-            style: { borderRadius: 16, marginHorizontal: -10 },
+            style: { borderRadius: 16 },
             propsForDots: {
               r: '6',
               strokeWidth: '2',
@@ -65,7 +65,7 @@ export const ForecastChart = ({ currency, projectionData, colors }: ForecastChar
             propsForBackgroundLines: {
               strokeDasharray: '',
               stroke: colors.grey4 || '#EEEEEE',
-              strokeOpacity: 0.2,
+              strokeOpacity: 0.4,
             },
             propsForLabels: {
               fontSize: 10,
@@ -73,7 +73,7 @@ export const ForecastChart = ({ currency, projectionData, colors }: ForecastChar
             },
           }}
           withShadow
-          withInnerLines={false}
+          withInnerLines={true}
           withOuterLines={true}
           bezier
           style={{ marginHorizontal: -10 }}
@@ -133,38 +133,6 @@ export const ForecastChart = ({ currency, projectionData, colors }: ForecastChar
             </View>
           );
         })()}
-
-        {/* Monthly breakdown bars */}
-        <View className="h-20 flex-row items-end justify-around border-t border-gray-200/20 pt-3.5">
-          {projectionData.labels.map((month: string, index: number) => {
-            const data = projectionData.datasets[0].data;
-            if (!data || data.length === 0) return null;
-
-            const maxValue = Math.max(...data);
-            const value = data[index];
-            const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
-
-            return (
-              <View key={index} className="w-5 items-center">
-                <View className="h-[50px] w-full justify-end">
-                  <View
-                    className={`min-h-[3px] w-2 self-center rounded-full ${
-                      index === data.indexOf(maxValue) ? 'bg-orange-500' : ''
-                    }`}
-                    style={{
-                      height: `${percentage}%`,
-                      backgroundColor:
-                        index !== data.indexOf(maxValue)
-                          ? `rgba(255, 128, 0, ${0.3 + percentage / 300})`
-                          : undefined,
-                    }}
-                  />
-                </View>
-                <Text className="mt-1.5 text-xs opacity-70">{month.substring(0, 1)}</Text>
-              </View>
-            );
-          })}
-        </View>
       </View>
     </Card>
   );

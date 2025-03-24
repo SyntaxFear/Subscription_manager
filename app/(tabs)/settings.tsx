@@ -73,11 +73,11 @@ export const NOTIFICATION_HOURS = Array.from({ length: 24 }, (_, i) => {
 
 export default function SettingsScreen() {
   const { colorScheme, toggleColorScheme, colors } = useColorScheme();
-  const [interval, setInterval] = React.useState('monthly');
+  const [interval, setInterval] = React.useState('30 Days');
   const [currency, setCurrency] = React.useState('USD');
   const [customIntervalDisplay, setCustomIntervalDisplay] = React.useState('');
   const [customIntervalDays, setCustomIntervalDays] = React.useState('');
-  const [reminderDays, setReminderDays] = React.useState('3');
+  const [reminderDays, setReminderDays] = React.useState('1');
   const [customReminderDays, setCustomReminderDays] = React.useState('');
   const [notificationTime, setNotificationTime] = React.useState('09:00'); // Default to 9:00 AM
   const [timePickerDate, setTimePickerDate] = React.useState(new Date());
