@@ -9,6 +9,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   orientation: 'portrait',
   icon: './assets/Light.png',
   userInterfaceStyle: 'automatic',
+  owner: 'zinfo20',
   splash: {
     image: './assets/splash.png',
     resizeMode: 'contain',

@@ -17,7 +17,7 @@ export function useHeaderSearchBar(props: SearchBarProps = {}) {
   React.useLayoutEffect(() => {
     navigation.setOptions({
       headerSearchBarOptions: {
-        placeholder: 'Search...sda',
+        placeholder: 'Search...',
         barTintColor: colorScheme === 'dark' ? COLORS.black : COLORS.white,
         textColor: colors.foreground,
         tintColor: ORANGE_COLOR,
