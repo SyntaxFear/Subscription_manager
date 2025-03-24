@@ -42,6 +42,17 @@ export async function scheduleSubscriptionNotification(subscription: {
     // Cancel any existing notifications for this subscription
     await cancelSubscriptionNotification(subscription.id);
 
+    // Send immediate confirmation notification
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Subscription Added',
+        body: `${subscription.name} has been added. You will be notified ${subscription.reminder} days before each payment.`,
+        data: { subscriptionId: subscription.id },
+      },
+      trigger: null, // null means send immediately
+      identifier: `subscription-${subscription.id}-confirmation`,
+    });
+
     const startDate = new Date(subscription.startDate);
     const intervalDays = parseInt(subscription.interval);
     const reminderDays = parseInt(subscription.reminder);
@@ -68,6 +79,7 @@ export async function scheduleSubscriptionNotification(subscription: {
         data: { subscriptionId: subscription.id },
       };
 
+      // Schedule the next notification
       await Notifications.scheduleNotificationAsync({
         content: notificationContent,
         trigger: {
@@ -76,10 +88,10 @@ export async function scheduleSubscriptionNotification(subscription: {
         },
         identifier: `subscription-${subscription.id}`,
       });
-    }
 
-    // Schedule recurring notifications for future payments
-    await scheduleRecurringNotifications(subscription);
+      // Schedule recurring notifications for future payments
+      await scheduleRecurringNotifications(subscription);
+    }
   } catch (error) {
     console.error('Error scheduling notification:', error);
   }
@@ -99,8 +111,36 @@ async function scheduleRecurringNotifications(subscription: {
   const reminderDays = parseInt(subscription.reminder);
   const today = new Date();
 
-  // Schedule notifications for the next 12 intervals
-  for (let i = 1; i <= 12; i++) {
+  // Calculate number of intervals to schedule based on subscription interval
+  let numberOfIntervals;
+  switch (intervalDays) {
+    case 1: // Daily
+      numberOfIntervals = 30; // One month of daily notifications
+      break;
+    case 3: // Every 3 days
+      numberOfIntervals = 10; // One month of notifications
+      break;
+    case 7: // Weekly
+      numberOfIntervals = 52; // One year of weekly notifications
+      break;
+    case 14: // Bi-weekly
+      numberOfIntervals = 26; // One year of bi-weekly notifications
+      break;
+    case 30: // Monthly
+      numberOfIntervals = 12; // One year of monthly notifications
+      break;
+    case 90: // Quarterly
+      numberOfIntervals = 4; // One year of quarterly notifications
+      break;
+    case 365: // Yearly
+      numberOfIntervals = 1; // One yearly notification
+      break;
+    default: // Custom interval
+      numberOfIntervals = Math.floor(365 / intervalDays); // One year of custom interval notifications
+  }
+
+  // Schedule notifications for the calculated number of intervals
+  for (let i = 1; i <= numberOfIntervals; i++) {
     const futureDate = new Date(today);
     futureDate.setDate(today.getDate() + intervalDays * i);
 
