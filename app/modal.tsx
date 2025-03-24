@@ -13,6 +13,7 @@ import * as React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams, Stack } from 'expo-router';
 import ContextMenu from 'react-native-context-menu-view';
+import { scheduleSubscriptionNotification } from '~/lib/notifications';
 
 import { Text } from '~/components/nativewindui/Text';
 import { DatePicker } from '~/components/nativewindui/DatePicker';
@@ -205,6 +206,9 @@ export default function Modal() {
 
       // Save updated data back to AsyncStorage
       await AsyncStorage.setItem('@Subs:subscriptions', JSON.stringify(updatedData));
+
+      // Schedule notification for the subscription
+      await scheduleSubscriptionNotification(subscriptionData);
 
       // Clear edit data if we were editing
       if (isEditing) {

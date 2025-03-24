@@ -623,8 +623,12 @@ export default function SettingsScreen() {
               styles.sheetOptionText,
               { textAlign: 'center', textDecorationLine: 'underline' },
             ]}
-            onPress={() => Linking.openURL('https://example.com/terms')}>
-            Terms & Conditions
+            onPress={() =>
+              Linking.openURL(
+                'https://www.privacypolicies.com/live/b5c96ac5-834d-4fad-a915-ef2e632af9e8'
+              )
+            }>
+            Privacy Policy
           </Text>
           <Text
             style={[
