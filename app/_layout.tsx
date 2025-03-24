@@ -5,19 +5,17 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { ThemeProvider as NavThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Platform, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useColorScheme, useInitialAndroidBarSync } from '~/lib/useColorScheme';
 import { NAV_THEME } from '~/theme';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { BlurView } from 'expo-blur';
 
 SplashScreen.preventAutoHideAsync();
 export { ErrorBoundary } from 'expo-router';
 
 SplashScreen.setOptions({
-  duration: 1000,
+  duration: 2000,
   fade: true,
 });
 

@@ -6,6 +6,9 @@ import { useColorScheme } from './useColorScheme';
 
 import { COLORS } from '~/theme/colors';
 
+// Orange brand color
+const ORANGE_COLOR = '#FF8000';
+
 export function useHeaderSearchBar(props: SearchBarProps = {}) {
   const { colorScheme, colors } = useColorScheme();
   const navigation = useNavigation();
@@ -14,11 +17,11 @@ export function useHeaderSearchBar(props: SearchBarProps = {}) {
   React.useLayoutEffect(() => {
     navigation.setOptions({
       headerSearchBarOptions: {
-        placeholder: 'Search...',
+        placeholder: 'Search...sda',
         barTintColor: colorScheme === 'dark' ? COLORS.black : COLORS.white,
         textColor: colors.foreground,
-        tintColor: colors.primary,
-        headerIconColor: colors.foreground,
+        tintColor: ORANGE_COLOR,
+        headerIconColor: ORANGE_COLOR,
         hintTextColor: colors.grey,
         hideWhenScrolling: false,
         onChangeText(ev) {
