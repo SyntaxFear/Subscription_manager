@@ -10,7 +10,6 @@ import { useColorScheme, useInitialAndroidBarSync } from '~/lib/useColorScheme';
 import { NAV_THEME } from '~/theme';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { initializeNotifications } from '~/lib/notifications';
 
 SplashScreen.preventAutoHideAsync();
 export { ErrorBoundary } from 'expo-router';
@@ -26,7 +25,6 @@ export default function RootLayout() {
 
   useEffect(() => {
     SplashScreen.hideAsync();
-    initializeNotifications();
   }, []);
 
   return (

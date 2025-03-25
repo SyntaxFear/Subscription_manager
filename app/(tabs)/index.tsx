@@ -21,7 +21,6 @@ import { Container } from '~/components/Container';
 import { Text } from '~/components/nativewindui/Text';
 import { useColorScheme } from '~/lib/useColorScheme';
 import { useHeaderSearchBar } from '~/lib/useHeaderSearchBar';
-import { cancelSubscriptionNotification } from '~/lib/notifications';
 
 // Define subscription type
 interface Subscription {
@@ -140,9 +139,6 @@ export default function Home() {
 
       // Save updated data
       await AsyncStorage.setItem('@Subs:subscriptions', JSON.stringify(updatedData));
-
-      // Cancel notifications for the deleted subscription
-      await cancelSubscriptionNotification(id);
 
       // Refresh subscriptions
       loadSubscriptions();
