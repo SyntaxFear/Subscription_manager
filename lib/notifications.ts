@@ -53,45 +53,8 @@ export async function scheduleSubscriptionNotification(subscription: {
       identifier: `subscription-${subscription.id}-confirmation`,
     });
 
-    const startDate = new Date(subscription.startDate);
-    const intervalDays = parseInt(subscription.interval);
-    const reminderDays = parseInt(subscription.reminder);
-    const today = new Date();
-
-    // Calculate days since start
-    const daysSinceStart = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
-    const daysElapsed = daysSinceStart % intervalDays;
-    const daysUntilNext = intervalDays - daysElapsed;
-
-    // Calculate next billing date
-    const nextBillingDate = new Date(today);
-    nextBillingDate.setDate(today.getDate() + daysUntilNext);
-
-    // Calculate notification date (before the billing date)
-    const notificationDate = new Date(nextBillingDate);
-    notificationDate.setDate(nextBillingDate.getDate() - reminderDays);
-
-    // Only schedule if the notification date is in the future
-    if (notificationDate > today) {
-      const notificationContent = {
-        title: `Upcoming Subscription Payment`,
-        body: `${subscription.name} - ${subscription.currency}${subscription.price.toFixed(2)} due in ${reminderDays} days`,
-        data: { subscriptionId: subscription.id },
-      };
-
-      // Schedule the next notification
-      await Notifications.scheduleNotificationAsync({
-        content: notificationContent,
-        trigger: {
-          date: notificationDate,
-          channelId: 'subscription-reminders',
-        },
-        identifier: `subscription-${subscription.id}`,
-      });
-
-      // Schedule recurring notifications for future payments
-      await scheduleRecurringNotifications(subscription);
-    }
+    // Schedule recurring notifications for future payments
+    await scheduleRecurringNotifications(subscription);
   } catch (error) {
     console.error('Error scheduling notification:', error);
   }
@@ -139,14 +102,25 @@ async function scheduleRecurringNotifications(subscription: {
       numberOfIntervals = Math.floor(365 / intervalDays); // One year of custom interval notifications
   }
 
+  // Get the next payment date
+  const startDate = new Date(subscription.startDate);
+  const daysSinceStart = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+  const daysElapsed = daysSinceStart % intervalDays;
+  const daysUntilNext = intervalDays - daysElapsed;
+  const nextPaymentDate = new Date(today);
+  nextPaymentDate.setDate(today.getDate() + daysUntilNext);
+
   // Schedule notifications for the calculated number of intervals
-  for (let i = 1; i <= numberOfIntervals; i++) {
-    const futureDate = new Date(today);
-    futureDate.setDate(today.getDate() + intervalDays * i);
+  for (let i = 0; i < numberOfIntervals; i++) {
+    // Calculate the payment date for this interval
+    const paymentDate = new Date(nextPaymentDate);
+    paymentDate.setDate(nextPaymentDate.getDate() + intervalDays * i);
 
-    const notificationDate = new Date(futureDate);
-    notificationDate.setDate(futureDate.getDate() - reminderDays);
+    // Calculate notification date (before the payment date)
+    const notificationDate = new Date(paymentDate);
+    notificationDate.setDate(paymentDate.getDate() - reminderDays);
 
+    // Only schedule if the notification date is in the future
     if (notificationDate > today) {
       const notificationContent = {
         title: `Upcoming Subscription Payment`,
